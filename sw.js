@@ -1,5 +1,5 @@
-const CACHE = 'luz-v1';
-const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest',
+const CACHE = 'luz-v2';
+const ASSETS = ['./', './index.html', './styles.css', './app.js', './key.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',
   './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 self.addEventListener('install', e => {
@@ -11,6 +11,7 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  if (new URL(e.request.url).origin !== location.origin) return; // APIs externas: siempre red
   e.respondWith(
     fetch(e.request).then(res => {
       if (res.ok && new URL(e.request.url).origin === location.origin) {
