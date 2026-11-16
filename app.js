@@ -7,8 +7,8 @@
   const cmdInput = $('#cmd-input'), dlg = $('#settings');
   const rateEl = $('#rate'), voiceOnEl = $('#voice-on'), vibOnEl = $('#vibrate-on'), fastSrEl = $('#fast-sr'), keyEl = $('#api-key');
 
-  const VISION_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash']; // lite: ~1-3 s; flash como respaldo
-  const INTENT_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash'];
+  const VISION_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']; // lite: ~1-3 s; flash como respaldo
+  const INTENT_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']; // reintento: la latencia a veces se dispara
   const API = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
   // ---------- Ajustes ----------
@@ -149,7 +149,7 @@
     if (!navigator.onLine) throw new LuzError('offline');
     let last;
     for (const [mi, model] of models.entries()) {
-      const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), mi === 0 ? timeout : timeout * 1.6);
+      const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), mi === 0 ? timeout : timeout * 1.3);
       const onAbort = () => ctrl.abort(); signal?.addEventListener('abort', onAbort);
       try {
         const body = { contents: [{ role: 'user', parts }],
@@ -199,7 +199,26 @@
     intent: { type: 'STRING', enum: ['describe', 'read', 'identify', 'ask', 'navigate', 'where', 'next', 'repeat', 'stop', 'end_route', 'help', 'slower', 'faster', 'none'] },
     destination: { type: 'STRING' }, place_query: { type: 'STRING' }, question: { type: 'STRING' } }, required: ['transcript', 'intent'] };
 
+  // Órdenes escritas claras: se resuelven al instante sin IA
+  function localIntent(raw) {
+    const t = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[¿?¡!.,;:«»"]/g, ' ').replace(/\s+/g, ' ').trim();
+    const w = t.split(' ').length, I = (intent, extra) => ({ transcript: raw, intent, ...extra });
+    if (w <= 3 && /^(para|parar|silencio|calla|callate|stop|basta)$/.test(t)) return I('stop');
+    if (w <= 3 && /^(ayuda|que puedes hacer)$/.test(t)) return I('help');
+    if (w <= 3 && /^(repite|repitelo|otra vez)$/.test(t)) return I('repeat');
+    if (w <= 2 && /^(siguiente|sigue|continua)$/.test(t)) return I('next');
+    if (/^(terminar|termina|cancelar|cancela) (la )?ruta$/.test(t)) return I('end_route');
+    if (/^(donde estoy|en que calle estoy)$/.test(t)) return I('where');
+    if (/^(que hay delante|describe lo que hay delante|que ves|describe)$/.test(t)) return I('describe');
+    if (/^(lee esto|leer|leeme esto|lee el texto|que pone)$/.test(t)) return I('read');
+    if (/^(que es esto|que es eso|que tengo en la mano)$/.test(t)) return I('identify');
+    const m = raw.match(/^\s*(ll[eé]vame|quiero ir|c[oó]mo (llego|voy)|g[uú][ií]ame)\s+(a|al|hasta|hacia)\s+(.+?)[.?!]*\s*$/i);
+    if (m) { const dest = (m[3].toLowerCase() === 'al' ? 'el ' : '') + m[4]; return I('navigate', { destination: dest, place_query: cleanQuery(dest) }); }
+    return null;
+  }
+
   async function understand({ blob, text, context }, signal) {
+    if (text && !context) { const li = localIntent(text); if (li) return li; }
     const parts = [];
     if (blob) parts.push({ inlineData: { mimeType: (blob.type || 'audio/mp4').split(';')[0], data: await blobToB64(blob) } });
     if (text) parts.push({ text: 'Orden escrita: ' + text });
