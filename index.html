@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es-ES">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Luz · Asistente visual por voz</title>
+<meta name="description" content="Luz: asistente visual controlado por voz para personas ciegas o con baja visión.">
+<meta name="theme-color" content="#0b1020">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Luz">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#mic">Saltar al botón principal</a>
+
+<header class="top">
+  <h1 class="brand"><span class="sun" aria-hidden="true"></span>Luz</h1>
+  <button id="btn-stop" class="chip" type="button" aria-label="Parar de hablar">Parar</button>
+</header>
+
+<main id="main">
+  <!-- Estado: lo que Luz dice o hace, en texto grande -->
+  <section class="status-wrap" aria-labelledby="status-label">
+    <h2 id="status-label" class="sr-only">Estado</h2>
+    <p id="state-pill" class="pill" data-state="idle" aria-hidden="true">Lista</p>
+    <p id="status" class="status" role="status" aria-live="polite" aria-atomic="true">Toca el botón grande y habla.</p>
+    <p id="alert" class="sr-only" role="alert" aria-live="assertive" aria-atomic="true"></p>
+  </section>
+
+  <!-- Vista de cámara (opcional, solo mientras describe o lee) -->
+  <figure id="camera-wrap" class="camera" hidden>
+    <video id="camera" playsinline muted autoplay aria-hidden="true"></video>
+    <figcaption id="camera-cap" class="camera-cap">Cámara activa</figcaption>
+  </figure>
+
+  <!-- Botón principal gigante -->
+  <button id="mic" class="mic" type="button" data-state="idle"
+          aria-label="Hablar con Luz. Toca una vez y di lo que necesitas."
+          aria-describedby="mic-hint">
+    <span class="mic-ring" aria-hidden="true"></span>
+    <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/>
+    </svg>
+    <span id="mic-label" class="mic-label">Toca y habla</span>
+  </button>
+  <p id="mic-hint" class="sr-only">Después de tocar, oirás un tono. Di por ejemplo: describe lo que hay delante, lee esto, qué es esto, o llévame a la farmacia.</p>
+
+  <!-- Controles de navegación (solo durante una ruta) -->
+  <section id="nav-controls" class="nav-controls" hidden aria-label="Controles de ruta">
+    <button type="button" class="big alt" data-cmd="siguiente">Siguiente paso</button>
+    <button type="button" class="big alt" data-cmd="repite">Repetir</button>
+    <button type="button" class="big warn" data-cmd="terminar ruta">Terminar ruta</button>
+  </section>
+
+  <!-- Accesos directos grandes -->
+  <section aria-labelledby="quick-title">
+    <h2 id="quick-title" class="sr-only">Acciones rápidas</h2>
+    <ul class="grid" role="list">
+      <li><button type="button" class="big" data-cmd="describe lo que hay delante"><span aria-hidden="true">👁️</span> Describir entorno</button></li>
+      <li><button type="button" class="big" data-cmd="lee esto"><span aria-hidden="true">📄</span> Leer texto</button></li>
+      <li><button type="button" class="big" data-cmd="qué es esto"><span aria-hidden="true">❓</span> ¿Qué es esto?</button></li>
+      <li><button type="button" class="big" data-cmd="llévame a"><span aria-hidden="true">🧭</span> Llévame a…</button></li>
+      <li><button type="button" class="big" data-cmd="repite"><span aria-hidden="true">🔁</span> Repetir</button></li>
+      <li><button type="button" class="big" data-cmd="ayuda"><span aria-hidden="true">💬</span> Ayuda</button></li>
+    </ul>
+  </section>
+
+  <!-- Escribir una orden (alternativa si el reconocimiento de voz no está disponible) -->
+  <details id="typed" class="panel">
+    <summary>Escribir una orden</summary>
+    <form id="cmd-form" autocomplete="off">
+      <label for="cmd-input">Escribe o dicta con el teclado lo que quieres. Por ejemplo: llévame a la panadería.</label>
+      <input id="cmd-input" name="cmd" type="text" inputmode="text" enterkeyhint="send" autocapitalize="sentences">
+      <button type="submit" class="big">Enviar orden</button>
+    </form>
+  </details>
+
+  <details id="settings" class="panel">
+    <summary>Ajustes</summary>
+    <div class="setting">
+      <label for="rate">Velocidad de la voz</label>
+      <input id="rate" type="range" min="0.6" max="1.4" step="0.1" value="0.95" aria-valuetext="Normal">
+    </div>
+    <div class="setting check">
+      <input id="voice-on" type="checkbox" checked>
+      <label for="voice-on">Voz de Luz activada (desactívala si prefieres que solo hable VoiceOver)</label>
+    </div>
+    <div class="setting check">
+      <input id="vibrate-on" type="checkbox" checked>
+      <label for="vibrate-on">Vibración</label>
+    </div>
+    <div class="setting check">
+      <input id="camera-on" type="checkbox" checked>
+      <label for="camera-on">Usar la cámara al describir o leer</label>
+    </div>
+    <button id="btn-test" type="button" class="big alt">Probar la voz</button>
+  </details>
+
+  <p class="note">Prototipo: las descripciones, lecturas y rutas son simuladas con ejemplos.</p>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
